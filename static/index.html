@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Notes</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 16px; background: #f5f5f5; color: #222; }
+    h1 { margin-bottom: 16px; }
+    textarea { width: 100%; height: 100px; padding: 10px; font-size: 16px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
+    button { margin-top: 8px; padding: 10px 18px; font-size: 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    .note { background: white; padding: 12px; margin-top: 12px; border-radius: 6px; border: 1px solid #ddd; }
+    .note-text { white-space: pre-wrap; margin-bottom: 8px; }
+    .delete-btn { margin-top: 0; padding: 4px 10px; font-size: 14px; background: #dc2626; }
+    .delete-btn:hover { background: #b91c1c; }
+  </style>
+</head>
+<body>
+  <h1>My Notes</h1>
+  <textarea id="note-input" placeholder="Write a note..."></textarea>
+  <button id="save-btn">Save note</button>
+  <div id="notes-list"></div>
+
+  <script>
+    const input = document.getElementById("note-input");
+    const saveBtn = document.getElementById("save-btn");
+    const notesList = document.getElementById("notes-list");
+    const API_URL = "/api/notes";
+
+    function renderNotes(notes) {
+      notesList.innerHTML = "";
+      for (const note of notes) {
+        const div = document.createElement("div");
+        div.className = "note";
+
+        const text = document.createElement("div");
+        text.className = "note-text";
+        text.textContent = note.content;
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-btn";
+        deleteBtn.textContent = "Delete";
+        deleteBtn.addEventListener("click", () => deleteNote(note.id));
+
+        div.appendChild(text);
+        div.appendChild(deleteBtn);
+        notesList.appendChild(div);
+      }
+    }
+
+    // REQUEST: ask the server for all notes
+    async function loadNotes() {
+      const response = await fetch(API_URL);
+      const notes = await response.json();
+      renderNotes(notes);
+    }
+
+    // REQUEST: send one new note to the server
+    async function saveNote(content) {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error);
+      }
+      return data;
+    }
+
+    // REQUEST: ask the server to delete one note by its ID
+    async function deleteNote(id) {
+      const response = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error);
+      }
+      await loadNotes();
+    }
+
+    saveBtn.addEventListener("click", async () => {
+      const content = input.value.trim();
+      if (content === "") return;
+
+      try {
+        await saveNote(content);
+        input.value = "";
+        await loadNotes();
+      } catch (err) {
+        alert("Could not save note: " + err.message);
+      }
+    });
+
+    loadNotes();
+  </script>
+</body>
+</html>
